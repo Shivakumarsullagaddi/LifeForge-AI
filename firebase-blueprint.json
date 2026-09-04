@@ -1,0 +1,184 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "path": "users/{userId}",
+      "description": "User profile with personal goals, study preferences, and onboarding state",
+      "fields": {
+        "uid": { "type": "string", "required": true },
+        "email": { "type": "string", "required": true },
+        "displayName": { "type": "string", "required": false },
+        "photoURL": { "type": "string", "required": false },
+        "timezone": { "type": "string", "required": false },
+        "primaryGoal": { "type": "string", "required": false },
+        "targetPlacements": { "type": "array", "required": false },
+        "studyPhilosophy": { "type": "string", "required": false },
+        "disciplinedStreakDays": { "type": "number", "required": false },
+        "onboardingCompleted": { "type": "boolean", "required": true },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "Journal": {
+      "collection": "journals",
+      "path": "users/{userId}/journals/{journalId}",
+      "description": "Private reflective journal logs, observations, and emotional check-ins",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "content": { "type": "string", "required": true },
+        "category": { "type": "string", "required": false },
+        "tags": { "type": "array", "required": false },
+        "mood": { "type": "string", "required": false },
+        "clarityLevel": { "type": "number", "required": false },
+        "energyLevel": { "type": "number", "required": false },
+        "actionTakeaway": { "type": "string", "required": false },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "Memory": {
+      "collection": "memories",
+      "path": "users/{userId}/memories/{memoryId}",
+      "description": "Structured long-term user memories, verified facts, values, and routines",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "content": { "type": "string", "required": true },
+        "category": { "type": "string", "required": false },
+        "source": { "type": "string", "required": true },
+        "confidence": { "type": "number", "required": true },
+        "status": { "type": "string", "required": true },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "Goal": {
+      "collection": "goals",
+      "path": "users/{userId}/goals/{goalId}",
+      "description": "High-level intentional milestones across study, placement, career, and habits",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "description": { "type": "string", "required": false },
+        "domain": { "type": "string", "required": true },
+        "priority": { "type": "string", "required": true },
+        "status": { "type": "string", "required": true },
+        "targetDate": { "type": "string", "required": false },
+        "progress": { "type": "number", "required": true },
+        "source": { "type": "string", "required": false },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "Task": {
+      "collection": "tasks",
+      "path": "users/{userId}/tasks/{taskId}",
+      "description": "Actionable daily tasks and deep-work study blocks",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "goalId": { "type": "string", "required": false },
+        "title": { "type": "string", "required": true },
+        "description": { "type": "string", "required": false },
+        "domain": { "type": "string", "required": true },
+        "priority": { "type": "string", "required": true },
+        "status": { "type": "string", "required": true },
+        "dueDate": { "type": "string", "required": false },
+        "estimatedMinutes": { "type": "number", "required": false },
+        "isDeepWork": { "type": "boolean", "required": false },
+        "source": { "type": "string", "required": false },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "Reflection": {
+      "collection": "reflections",
+      "path": "users/{userId}/reflections/{reflectionId}",
+      "description": "Daily and weekly structured reflections and disciplined evaluations",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "date": { "type": "string", "required": true },
+        "keyWins": { "type": "array", "required": false },
+        "challengesFaced": { "type": "array", "required": false },
+        "lessonsLearned": { "type": "string", "required": false },
+        "nextCommitments": { "type": "array", "required": false },
+        "disciplineScore": { "type": "number", "required": false },
+        "focusScore": { "type": "number", "required": false },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "Conversation": {
+      "collection": "conversations",
+      "path": "users/{userId}/conversations/{conversationId}",
+      "description": "Coaching dialogue sessions with orchestrator and specialized agents",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "agentDomain": { "type": "string", "required": true },
+        "summary": { "type": "string", "required": false },
+        "isPinned": { "type": "boolean", "required": false },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "ActionConfirmation": {
+      "collection": "action_confirmations",
+      "path": "users/{userId}/action_confirmations/{actionId}",
+      "description": "Human-in-the-loop authorization queue for sensitive or destructive actions",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "actionType": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "description": { "type": "string", "required": true },
+        "payload": { "type": "string", "required": false },
+        "status": { "type": "string", "required": true },
+        "expiresAt": { "type": "string", "required": true },
+        "requestedAt": { "type": "string", "required": true },
+        "resolvedAt": { "type": "string", "required": false }
+      }
+    },
+    "UserEmbedding": {
+      "collection": "embeddings",
+      "path": "users/{userId}/embeddings/{embeddingId}",
+      "description": "User-private dense vector embeddings for semantic search over journals, memories, goals, tasks, and reflections",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "recordId": { "type": "string", "required": true },
+        "recordType": { "type": "string", "required": true },
+        "embedding": { "type": "array", "required": true },
+        "textHash": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "PlacementProfile": {
+      "collection": "placement_profile",
+      "path": "users/{userId}/placement_profile/{profileId}",
+      "description": "Student technical placement profile, skills matrix, projects, target companies, and interviews",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "targetRole": { "type": "string", "required": true },
+        "targetCompanies": { "type": "array", "required": true },
+        "skills": { "type": "array", "required": true },
+        "weakAreas": { "type": "array", "required": false },
+        "experience": { "type": "string", "required": false },
+        "projects": { "type": "array", "required": false },
+        "resumeStatus": { "type": "string", "required": true },
+        "preparationProgress": { "type": "number", "required": true },
+        "upcomingInterviews": { "type": "array", "required": false },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    }
+  }
+}

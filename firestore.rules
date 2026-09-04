@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions for secure authentication
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profile and all nested subcollections
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /journals/{journalId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /memories/{memoryId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /goals/{goalId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /reflections/{reflectionId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /conversations/{conversationId} {
+        allow read, write: if isOwner(userId);
+
+        match /messages/{messageId} {
+          allow read, write: if isOwner(userId);
+        }
+      }
+
+      match /action_confirmations/{actionId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /study_sessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /embeddings/{embeddingId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /placement_profile/{profileId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
