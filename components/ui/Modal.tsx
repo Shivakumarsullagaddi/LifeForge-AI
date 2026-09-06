@@ -46,6 +46,8 @@ export const Modal: React.FC<ModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div
+        role="dialog"
+        aria-modal="true"
         className={`relative w-full ${widthStyles[maxWidth]} bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]`}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">

@@ -9,14 +9,39 @@ import { executeAgentTask } from '../lib/live/agentHandoff';
 import type { RetrievalRecord } from '../lib/retrieval/types';
 import type {
   ActionConfirmation,
-  JournalEntry,
-  MemoryItem,
   GoalItem,
   TaskItem,
   ReflectionEntry,
   StudySessionRecord,
   PlacementProfile,
 } from '../lib/types';
+
+interface JournalEntry {
+  id: string;
+  userId: string;
+  title: string;
+  content: string;
+  tags?: string[];
+  category?: string;
+  actionTakeaway?: string;
+  clarityLevel?: number;
+  energyLevel?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface MemoryItem {
+  id: string;
+  userId: string;
+  type: string;
+  content: string;
+  category?: string;
+  source: string;
+  confidence: number;
+  status: 'active' | 'candidate';
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface TestResult {
   section: string;
@@ -340,7 +365,7 @@ async function runEndToEndValidation() {
   const approvedMemory: RetrievalRecord = {
     id: 'mem_003_approved',
     userId: 'user_A',
-    type: 'memory',
+    type: 'study_session',
     title: 'Study Preference: Teach-back review after hard problems',
     content: candidateMemory.content,
     tags: ['study_preference', 'active_recall', 'teach_back'],

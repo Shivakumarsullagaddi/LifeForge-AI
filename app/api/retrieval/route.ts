@@ -22,14 +22,26 @@ interface RetrievalRequestBody {
   records?: RetrievalRecord[];
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const body: RetrievalRequestBody = await req.json();
-    const { query, userId = 'current_user', topK = 6, minScore = 0.25, typesFilter, domainFilter, userData, records } = body;
+import { parseJsonBody } from '@/lib/request-parser';
 
-    if (!query || typeof query !== 'string') {
-      return NextResponse.json({ error: 'Query string is required' }, { status: 400 });
-    }
+export async function POST(req: NextRequest) {
+  const parsed = await parseJsonBody<RetrievalRequestBody>(req, {
+    requiredFields: ['query'],
+    validate: (d) => {
+      if (typeof d.query !== 'string' || !d.query.trim()) {
+        return { valid: false, error: 'Query string is required' };
+      }
+      return { valid: true };
+    },
+  });
+
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  try {
+    const body: RetrievalRequestBody = parsed.data;
+    const { query, userId = 'current_user', topK = 6, minScore = 0.25, typesFilter, domainFilter, userData, records } = body;
 
     let searchRecords: RetrievalRecord[] = [];
 

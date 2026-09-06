@@ -10,6 +10,8 @@ import {
   fetchUpcomingCalendarEvents,
   createGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
+  calendarStateManager,
+  type CalendarConnectionState,
 } from '@/lib/calendar';
 import { addActionConfirmation } from '@/lib/firebase';
 import type { GoogleCalendarEventItem } from '@/lib/types';
@@ -31,7 +33,8 @@ import {
 
 export const CalendarView: React.FC = () => {
   const { user, accessToken, requestGoogleCalendarAuth } = useAuth();
-  const [events, setEvents] = useState<GoogleCalendarEventItem[]>([]);
+  const [calendarState, setCalendarState] = useState<CalendarConnectionState>(() => calendarStateManager.getState());
+  const [events, setEvents] = useState<GoogleCalendarEventItem[]>(() => calendarStateManager.getVerifiedEvents());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -82,37 +85,38 @@ export const CalendarView: React.FC = () => {
     }
   }, []);
 
+  const isConnected = calendarState === 'CONNECTED';
+  const effectiveToken = accessToken || calendarStateManager.getAccessToken();
+
   useEffect(() => {
-    let isMounted = true;
-    async function initEvents() {
-      if (!accessToken) return;
-      try {
-        const items = await fetchUpcomingCalendarEvents(accessToken, 25);
-        if (isMounted) {
-          setEvents(items);
-        }
-      } catch (err: any) {
-        console.error('Failed to load Google Calendar events:', err);
-        if (isMounted) {
-          setError(err.message || 'Unable to load calendar events. Token may be expired.');
-        }
+    const unsub = calendarStateManager.subscribe(() => {
+      setCalendarState(calendarStateManager.getState());
+      const vEvents = calendarStateManager.getVerifiedEvents();
+      if (vEvents.length > 0) {
+        setEvents(vEvents);
       }
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (accessToken && calendarStateManager.getState() === 'DISCONNECTED') {
+      calendarStateManager.verifyCalendarAccess(accessToken).catch(() => {});
     }
-    initEvents();
-    return () => {
-      isMounted = false;
-    };
   }, [accessToken]);
 
   const handleConnectCalendar = async () => {
     setIsAuthenticating(true);
     setError(null);
     try {
-      const token = await requestGoogleCalendarAuth();
-      if (token) {
-        await loadCalendarEvents(token);
+      const ok = await calendarStateManager.initiateCalendarOAuth();
+      if (ok) {
+        const token = calendarStateManager.getAccessToken();
+        if (token) {
+          await loadCalendarEvents(token);
+        }
       } else {
-        setError('Google Calendar authorization was not granted.');
+        setError(calendarStateManager.getError() || 'Google Calendar authorization was not granted.');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to authenticate Google Calendar');
@@ -123,7 +127,7 @@ export const CalendarView: React.FC = () => {
 
   const handleScheduleEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken || !summary.trim() || !startDateTime || !endDateTime) return;
+    if (!effectiveToken || !summary.trim() || !startDateTime || !endDateTime) return;
 
     setIsSubmittingEvent(true);
     setError(null);
@@ -132,7 +136,7 @@ export const CalendarView: React.FC = () => {
       const isoStart = new Date(startDateTime).toISOString();
       const isoEnd = new Date(endDateTime).toISOString();
 
-      await createGoogleCalendarEvent(accessToken, {
+      await createGoogleCalendarEvent(effectiveToken, {
         summary: summary.trim(),
         description: description.trim(),
         startDateTime: isoStart,
@@ -141,7 +145,7 @@ export const CalendarView: React.FC = () => {
       });
 
       setIsCreateModalOpen(false);
-      await loadCalendarEvents(accessToken);
+      await loadCalendarEvents(effectiveToken);
     } catch (err: any) {
       console.error('Failed to create calendar event:', err);
       setError(err.message || 'Failed to create event in Google Calendar');
@@ -151,10 +155,9 @@ export const CalendarView: React.FC = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (!accessToken || !deletingEvent) return;
+    if (!effectiveToken || !deletingEvent) return;
     setIsDeleting(true);
     try {
-      // Record human-in-the-loop action log
       if (user) {
         await addActionConfirmation(user.uid, {
           actionType: 'external_calendar_write',
@@ -167,7 +170,7 @@ export const CalendarView: React.FC = () => {
         });
       }
 
-      await deleteGoogleCalendarEvent(accessToken, deletingEvent.id);
+      await deleteGoogleCalendarEvent(effectiveToken, deletingEvent.id);
       setEvents((prev) => prev.filter((e) => e.id !== deletingEvent.id));
       setDeletingEvent(null);
     } catch (err: any) {
@@ -209,9 +212,17 @@ export const CalendarView: React.FC = () => {
               <CalendarIcon className="w-3.5 h-3.5" />
               <span>Google Calendar Sync</span>
             </Badge>
-            <Badge variant={accessToken ? 'emerald' : 'slate'} size="sm">
+            <Badge variant={isConnected ? 'emerald' : calendarState === 'AUTHORIZING' || calendarState === 'VERIFYING' ? 'amber' : 'slate'} size="sm">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{accessToken ? 'Connected' : 'Permission Required'}</span>
+              <span>
+                {isConnected
+                  ? 'Calendar Connected'
+                  : calendarState === 'AUTHORIZING'
+                  ? 'Authorizing...'
+                  : calendarState === 'VERIFYING'
+                  ? 'Verifying...'
+                  : 'Permission Required'}
+              </span>
             </Badge>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-100 tracking-tight">
@@ -223,7 +234,7 @@ export const CalendarView: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap gap-2.5 shrink-0">
-          {accessToken ? (
+          {isConnected ? (
             <>
               <Button
                 size="sm"
@@ -240,7 +251,7 @@ export const CalendarView: React.FC = () => {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => loadCalendarEvents(accessToken)}
+                onClick={() => effectiveToken && loadCalendarEvents(effectiveToken)}
                 isLoading={loading}
                 className="gap-2"
               >
@@ -253,11 +264,17 @@ export const CalendarView: React.FC = () => {
               size="sm"
               variant="primary"
               onClick={handleConnectCalendar}
-              isLoading={isAuthenticating}
+              isLoading={isAuthenticating || calendarState === 'AUTHORIZING' || calendarState === 'VERIFYING'}
               className="gap-2"
             >
               <Lock className="w-4 h-4" />
-              <span>Connect Google Calendar</span>
+              <span>
+                {calendarState === 'AUTHORIZING'
+                  ? 'Authorizing OAuth...'
+                  : calendarState === 'VERIFYING'
+                  ? 'Verifying Calendar API...'
+                  : 'Connect Google Calendar'}
+              </span>
             </Button>
           )}
         </div>
@@ -298,7 +315,7 @@ export const CalendarView: React.FC = () => {
           <Button
             size="sm"
             variant="ghost"
-            disabled={!accessToken}
+            disabled={!isConnected}
             onClick={() => {
               setSummary('Deep Work: DSA Graphs & DP Sprints');
               setDescription('3 Pomodoro cycles solving LeetCode Medium/Hard graphs with active recall');
@@ -324,7 +341,7 @@ export const CalendarView: React.FC = () => {
           <Button
             size="sm"
             variant="ghost"
-            disabled={!accessToken}
+            disabled={!isConnected}
             onClick={() => {
               setSummary('Core CS Revision: OS & DBMS Teach-Back');
               setDescription('Explain virtual memory, page replacement, and indexing mechanisms from scratch');
@@ -350,7 +367,7 @@ export const CalendarView: React.FC = () => {
           <Button
             size="sm"
             variant="ghost"
-            disabled={!accessToken}
+            disabled={!isConnected}
             onClick={() => {
               setSummary('Mock Interview: System Design & STAR Stories');
               setDescription('Defense of key project architectural tradeoffs with LifeForge Coach');
@@ -363,7 +380,6 @@ export const CalendarView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Events List */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -372,12 +388,12 @@ export const CalendarView: React.FC = () => {
               <span>Upcoming Google Calendar Events</span>
             </CardTitle>
             <CardDescription>
-              {accessToken
+              {isConnected
                 ? `${events.length} upcoming events found on your primary calendar`
                 : 'Connect your Google Calendar to view upcoming schedules'}
             </CardDescription>
           </div>
-          {accessToken && (
+          {isConnected && (
             <Badge variant="slate" size="sm">
               Primary Calendar
             </Badge>
@@ -385,7 +401,7 @@ export const CalendarView: React.FC = () => {
         </CardHeader>
 
         <div className="space-y-3">
-          {!accessToken ? (
+          {!isConnected ? (
             <div className="text-center py-12 border border-dashed border-slate-800 rounded-xl space-y-3">
               <Lock className="w-10 h-10 text-slate-500 mx-auto opacity-60" />
               <div className="space-y-1">
@@ -398,7 +414,7 @@ export const CalendarView: React.FC = () => {
                 size="sm"
                 variant="primary"
                 onClick={handleConnectCalendar}
-                isLoading={isAuthenticating}
+                isLoading={isAuthenticating || calendarState === 'AUTHORIZING' || calendarState === 'VERIFYING'}
                 className="gap-2 text-xs"
               >
                 <CalendarIcon className="w-3.5 h-3.5" /> Authorize Google Calendar

@@ -8,14 +8,13 @@ import { Modal } from '../ui/Modal';
 import { useAuth } from '@/lib/auth-context';
 import {
   getReflections,
+  subscribeReflections,
   addReflection,
   updateReflection,
   deleteReflection,
   getStudySessions,
   getTasks,
   getGoals,
-  getJournals,
-  getMemories,
   getPlacementProfile,
   addTask,
   addGoal,
@@ -149,10 +148,20 @@ export const ReflectionsView: React.FC = () => {
       }
     }
     load();
+
+    if (!user) return;
+    const unsub = subscribeReflections(user.uid, (items) => {
+      if (isMounted) {
+        setReflections(items);
+        setLoading(false);
+      }
+    });
+
     return () => {
       isMounted = false;
+      unsub();
     };
-  }, [loadData]);
+  }, [user, loadData]);
 
   // Generate Weekly Evidence-Grounded Reflection Report with Gemini 3.8 Flash
   const handleGenerateWeeklyReport = async () => {
@@ -160,9 +169,7 @@ export const ReflectionsView: React.FC = () => {
     setIsGeneratingReport(true);
     setReportError(null);
     try {
-      const [journals, memories, goals, tasks, refs, studySessions, placementProfile] = await Promise.all([
-        getJournals(user.uid),
-        getMemories(user.uid),
+      const [goals, tasks, refs, studySessions, placementProfile] = await Promise.all([
         getGoals(user.uid),
         getTasks(user.uid),
         getReflections(user.uid),
@@ -177,8 +184,6 @@ export const ReflectionsView: React.FC = () => {
           userId: user.uid,
           timeframe: 'weekly',
           userData: {
-            journals,
-            memories,
             goals,
             tasks,
             reflections: refs,
@@ -405,6 +410,8 @@ export const ReflectionsView: React.FC = () => {
           Growth Dashboard & Trends
         </button>
         <button
+          type="button"
+          data-testid="tab-reflections-history"
           onClick={() => setActiveSubTab('history')}
           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
             activeSubTab === 'history'
@@ -667,7 +674,7 @@ export const ReflectionsView: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {reflections.map((ref) => (
-                <Card key={ref.id} className="space-y-3 relative group">
+                <Card key={ref.id} data-testid="reflection-item" className="space-y-3 relative group">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-amber-400" />
@@ -870,12 +877,14 @@ export const ReflectionsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-sky-400 flex items-center gap-1.5">
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2 overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-sky-400 flex items-center gap-1.5 shrink-0">
                     <Briefcase className="w-4 h-4" /> Placement & Interview Readiness
                   </span>
-                  <Badge variant="sky" size="sm">{weeklyReport.careerPlacementAnalysis.prepProgress}</Badge>
+                  <Badge variant="sky" size="sm" className="max-w-full truncate whitespace-normal text-left">
+                    {weeklyReport.careerPlacementAnalysis.prepProgress}
+                  </Badge>
                 </div>
                 <div className="space-y-1 text-[11px] text-slate-400">
                   <div>
@@ -928,13 +937,13 @@ export const ReflectionsView: React.FC = () => {
                             </>
                           ) : (
                             <>
-                              <Plus className="w-3 h-3 text-amber-400" /> + Add Goal
+                              <Plus className="w-3 h-3 text-amber-400" /> Add Goal
                             </>
                           )}
                         </Button>
                       )}
 
-                      {item.suggestedTasks && item.suggestedTasks.map((t, tid) => (
+                      {item.suggestedTasks && item.suggestedTasks.slice(0, 1).map((t, tid) => (
                         <Button
                           key={tid}
                           size="sm"
@@ -949,7 +958,7 @@ export const ReflectionsView: React.FC = () => {
                             </>
                           ) : (
                             <>
-                              <Plus className="w-3 h-3 text-sky-400" /> + Add Task
+                              <Plus className="w-3 h-3 text-sky-400" /> Add Task
                             </>
                           )}
                         </Button>

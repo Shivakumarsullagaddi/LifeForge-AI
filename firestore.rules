@@ -63,6 +63,26 @@ service cloud.firestore {
       match /placement_profile/{profileId} {
         allow read, write: if isOwner(userId);
       }
+
+      match /resume/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /resume_extractions/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /resume_metadata/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /calendar_events/{eventId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /timer_state/{timerId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }

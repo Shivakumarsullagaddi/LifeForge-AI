@@ -3,10 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "tsx --env-file=.env.local server.ts",
     "build": "next build",
     "start": "node server.ts",
     "lint": "eslint .",
+    "test": "playwright test",
+    "test:unit": "tsx tests/live-voice-stability.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "firebase:verify": "tsx --env-file=.env.local scripts/verify-admin.ts",
+    "inspect:user": "tsx --env-file=.env.local scripts/inspect-user.ts",
     "clean": "next clean"
   },
   "dependencies": {
@@ -16,6 +25,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.18.0",
+    "firebase-admin": "^14.3.0",
     "lucide-react": "^0.553.0",
     "motion": "^12.23.24",
     "next": "^15.4.9",
@@ -27,6 +37,7 @@
   },
   "devDependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "4.1.11",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^20",

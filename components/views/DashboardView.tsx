@@ -5,14 +5,16 @@ import { Card, CardHeader, CardTitle, CardDescription } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { useAuth } from '@/lib/auth-context';
+import { useLiveVoiceContext } from '@/lib/live-voice-context';
+import { getRotatedMotivationalQuote, type MotivationalQuote } from '@/lib/motivation/motivation-service';
 import {
   getGoals,
   getTasks,
   getReflections,
   updateTaskStatus,
-  getJournals,
+  getConversations,
 } from '@/lib/firebase';
-import type { GoalItem, TaskItem, ReflectionEntry, JournalEntry } from '@/lib/types';
+import type { GoalItem, TaskItem, ReflectionEntry, ConversationSession } from '@/lib/types';
 import {
   Target,
   CheckCircle2,
@@ -20,30 +22,41 @@ import {
   Sparkles,
   Flame,
   ArrowRight,
-  BookMarked,
+  MessageSquare,
   Brain,
   GraduationCap,
   Briefcase,
   Plus,
   Calendar,
+  Play,
+  Pause,
+  RotateCcw,
+  Quote,
 } from 'lucide-react';
 import type { NavSection } from '../NavigationSidebar';
 
 interface DashboardViewProps {
   onNavigate: (section: NavSection) => void;
-  onOpenQuickJournal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
-  onOpenQuickJournal,
 }) => {
   const { user, profile } = useAuth();
+  const { timerState, startTimer, pauseTimer, resumeTimer, resetTimer } = useLiveVoiceContext();
   const [goals, setGoals] = useState<GoalItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [recentReflections, setRecentReflections] = useState<ReflectionEntry[]>([]);
-  const [recentJournals, setRecentJournals] = useState<JournalEntry[]>([]);
+  const [recentConversations, setRecentConversations] = useState<ConversationSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quote, setQuote] = useState<MotivationalQuote>(getRotatedMotivationalQuote());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setQuote(getRotatedMotivationalQuote());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,17 +66,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         return;
       }
       try {
-        const [g, t, r, j] = await Promise.all([
+        const [g, t, r, c] = await Promise.all([
           getGoals(user.uid),
           getTasks(user.uid),
           getReflections(user.uid),
-          getJournals(user.uid),
+          getConversations(user.uid),
         ]);
         if (isMounted) {
           setGoals(g);
           setTasks(t);
           setRecentReflections(r);
-          setRecentJournals(j);
+          setRecentConversations(c);
           setLoading(false);
         }
       } catch (err) {
@@ -90,7 +103,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const completedTasks = tasks.filter((t) => t.status === 'completed');
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div data-testid="dashboard-view" className="space-y-6 max-w-7xl mx-auto">
       {/* Top Banner / Today's State */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -121,11 +134,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Calendar className="w-4 h-4" />
               <span>Google Calendar</span>
             </Button>
-            <Button size="sm" variant="outline" onClick={() => onNavigate('study')} className="gap-2">
-              <GraduationCap className="w-4 h-4" />
-              <span>Study Session</span>
+            <Button size="sm" variant="outline" onClick={() => onNavigate('goals')} className="gap-2">
+              <Target className="w-4 h-4" />
+              <span>Goals & Tasks</span>
             </Button>
           </div>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 text-slate-300">
+            <Quote className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="italic">&ldquo;{quote.quote}&rdquo;</span>
+            <span className="text-slate-500 font-medium">— {quote.author}</span>
+          </div>
+          {quote.isPersonalPrinciple && (
+            <Badge size="sm" variant="amber">
+              Core Principle
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -271,13 +297,69 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </CardHeader>
 
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/90 text-center space-y-2">
-                <div className="text-3xl font-mono font-bold text-amber-400">25 : 00</div>
-                <p className="text-xs text-slate-400">Next Recommended Focus Interval</p>
-                <div className="pt-2 flex justify-center gap-2">
-                  <Button size="sm" onClick={() => onNavigate('study')}>
-                    Launch Focused Timer
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/90 text-center space-y-3">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span className="capitalize">{timerState.mode} Mode</span>
+                  <span>Cycle #{timerState.cyclesCompleted + 1}</span>
+                </div>
+                <div data-testid="timer-display" className="text-3xl font-mono font-bold text-amber-400">
+                  {Math.floor(timerState.remainingSeconds / 60).toString().padStart(2, '0')} : {(timerState.remainingSeconds % 60).toString().padStart(2, '0')}
+                </div>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  {timerState.status === 'RUNNING' ? (
+                    <Button size="sm" variant="outline" data-testid="dashboard-pause-timer" onClick={pauseTimer} className="gap-1.5 text-xs">
+                      <Pause className="w-3.5 h-3.5" /> Pause
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      data-testid="dashboard-start-timer"
+                      onClick={() =>
+                        timerState.remainingSeconds > 0 &&
+                        timerState.remainingSeconds < timerState.durationSeconds
+                          ? resumeTimer()
+                          : startTimer(25, 'focus')
+                      }
+                      className="gap-1.5 text-xs"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      {timerState.remainingSeconds === timerState.durationSeconds
+                        ? 'Start 25m Focus'
+                        : 'Resume'}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    data-testid="dashboard-reset-timer"
+                    onClick={resetTimer}
+                    className="p-2 text-slate-400 hover:text-slate-200"
+                    title="Reset"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
                   </Button>
+                </div>
+                <div className="flex justify-center gap-2 pt-1">
+                  <button
+                    onClick={() => startTimer(25, 'focus')}
+                    className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${
+                      timerState.mode === 'focus'
+                        ? 'bg-amber-500/20 text-amber-300 font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    25m Focus
+                  </button>
+                  <button
+                    onClick={() => startTimer(5, 'break')}
+                    className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${
+                      timerState.mode === 'break'
+                        ? 'bg-sky-500/20 text-sky-300 font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    5m Break
+                  </button>
                 </div>
               </div>
 
@@ -340,57 +422,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </Card>
         </div>
 
-        {/* Column 3: Private Journals & Daily Reflections */}
         <div className="space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <BookMarked className="w-4 h-4 text-rose-400" />
-                  <span>Recent Journal Reflections</span>
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  <span>Coaching Conversations</span>
                 </CardTitle>
-                <CardDescription>Private reflective history</CardDescription>
+                <CardDescription>Recent spoken & typed sessions</CardDescription>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => onNavigate('journal')}
+                onClick={() => onNavigate('conversations')}
                 className="text-xs text-amber-400 p-1"
               >
-                All Entries <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                All Sessions <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Button>
             </CardHeader>
 
             <div className="space-y-3">
-              {recentJournals.length === 0 ? (
+              {recentConversations.length === 0 ? (
                 <div className="text-center py-6 text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
-                  <p>No journal entries yet.</p>
+                  <p>No coaching sessions yet.</p>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => onNavigate('journal')}
+                    onClick={() => onNavigate('live-coach')}
                     className="mt-2 text-xs"
                   >
-                    Write First Entry
+                    Start First Session
                   </Button>
                 </div>
               ) : (
-                recentJournals.slice(0, 3).map((journal) => (
+                recentConversations.slice(0, 3).map((conv) => (
                   <div
-                    key={journal.id}
-                    onClick={() => onNavigate('journal')}
+                    key={conv.id}
+                    onClick={() => onNavigate('conversations')}
                     className="p-3 rounded-lg bg-slate-950/50 border border-slate-800 hover:border-slate-700 cursor-pointer space-y-1 transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-200 truncate">{journal.title}</span>
-                      {journal.mood && (
-                        <Badge size="sm" variant="slate">
-                          {journal.mood}
-                        </Badge>
-                      )}
+                      <span className="text-xs font-semibold text-slate-200 truncate">{conv.title}</span>
+                      <Badge size="sm" variant="slate">
+                        {conv.agentDomain || conv.activeAgent || 'LifeForge'}
+                      </Badge>
                     </div>
                     <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                      {journal.content}
+                      {conv.rollingSummary || conv.summary || conv.lastMessagePreview || 'Active session'}
                     </p>
                   </div>
                 ))

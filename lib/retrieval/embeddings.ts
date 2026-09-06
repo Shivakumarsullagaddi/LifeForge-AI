@@ -97,6 +97,10 @@ export class LocalDeterministicEmbeddingProvider implements EmbeddingProvider {
 /**
  * Gemini Embedding Provider using gemini-embedding-2-preview
  */
+// In-flight promise map for request deduplication
+const inFlightEmbeddings = new Map<string, Promise<number[]>>();
+let isRateLimitedUntil = 0;
+
 export class GeminiEmbeddingProvider implements EmbeddingProvider {
   name = 'gemini-embedding-2-preview';
   dimension = 768;
@@ -112,37 +116,52 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
     const cached = getCachedVector(cacheKey);
     if (cached) return cached;
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY || Date.now() < isRateLimitedUntil) {
       return this.fallback.generateEmbedding(clean);
     }
 
-    try {
-      const ai = new GoogleGenAI({
-        apiKey: process.env.GEMINI_API_KEY,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
+    const inFlight = inFlightEmbeddings.get(cacheKey);
+    if (inFlight) return inFlight;
+
+    const requestPromise = (async () => {
+      try {
+        const ai = new GoogleGenAI({
+          apiKey: process.env.GEMINI_API_KEY,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build',
+            },
           },
-        },
-      });
+        });
 
-      const res = await ai.models.embedContent({
-        model: 'gemini-embedding-2-preview',
-        contents: clean,
-      });
+        const res = await ai.models.embedContent({
+          model: 'gemini-embedding-2-preview',
+          contents: clean,
+        });
 
-      const rawRes = res as any;
-      const values = rawRes.embedding?.values || rawRes.embeddings?.[0]?.values;
-      if (values && Array.isArray(values) && values.length > 0) {
-        setCachedVector(cacheKey, values);
-        return values;
+        const rawRes = res as any;
+        const values = rawRes.embedding?.values || rawRes.embeddings?.[0]?.values;
+        if (values && Array.isArray(values) && values.length > 0) {
+          setCachedVector(cacheKey, values);
+          return values;
+        }
+
+        return this.fallback.generateEmbedding(clean);
+      } catch (err: any) {
+        if (err?.message?.includes('429') || err?.status === 429 || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+          isRateLimitedUntil = Date.now() + 60000;
+          console.warn('Gemini embedding rate-limited (429), switching to local deterministic provider for 60s.');
+        } else {
+          console.warn('Gemini embedding notice, using deterministic fallback:', err);
+        }
+        return this.fallback.generateEmbedding(clean);
+      } finally {
+        inFlightEmbeddings.delete(cacheKey);
       }
+    })();
 
-      return this.fallback.generateEmbedding(clean);
-    } catch (err) {
-      console.warn('Gemini embedding failed, using deterministic fallback:', err);
-      return this.fallback.generateEmbedding(clean);
-    }
+    inFlightEmbeddings.set(cacheKey, requestPromise);
+    return requestPromise;
   }
 
   async generateEmbeddings(texts: string[]): Promise<number[][]> {

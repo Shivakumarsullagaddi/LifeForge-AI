@@ -14,9 +14,20 @@ const ai = new GoogleGenAI({
   },
 });
 
+import { parseJsonBody, safeJsonParse } from '@/lib/request-parser';
+
 export async function POST(req: NextRequest) {
+  const parsed = await parseJsonBody<any>(req, {
+    allowEmpty: true,
+    emptyFallback: {},
+  });
+
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
   try {
-    const body = await req.json();
+    const body = parsed.data;
     const {
       userId = 'current_user',
       userData,
@@ -315,7 +326,7 @@ Generate a comprehensive, structured Weekly Reflection Report adhering strictly 
       throw new Error('Failed to generate weekly reflection report from Gemini');
     }
 
-    const report: WeeklyReflectionReport = JSON.parse(resultText);
+    const report: WeeklyReflectionReport = safeJsonParse(resultText, {} as WeeklyReflectionReport);
 
     return NextResponse.json({
       report,

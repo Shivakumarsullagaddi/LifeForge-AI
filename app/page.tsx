@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { LiveVoiceProvider, useLiveVoiceContext } from '@/lib/live-voice-context';
 import { HeaderBar } from '@/components/HeaderBar';
 import { NavigationSidebar, type NavSection } from '@/components/NavigationSidebar';
 import { AgentActivityBar } from '@/components/AgentActivityBar';
@@ -10,21 +11,27 @@ import { OnboardingModal } from '@/components/OnboardingModal';
 // Views
 import { DashboardView } from '@/components/views/DashboardView';
 import { LiveCoachView } from '@/components/views/LiveCoachView';
-import { JournalView } from '@/components/views/JournalView';
-import { MemoriesView } from '@/components/views/MemoriesView';
 import { GoalsTasksView } from '@/components/views/GoalsTasksView';
-import { StudyView } from '@/components/views/StudyView';
 import { PlacementsView } from '@/components/views/PlacementsView';
 import { ReflectionsView } from '@/components/views/ReflectionsView';
 import { ConversationsView } from '@/components/views/ConversationsView';
 import { PrivacySecurityView } from '@/components/views/PrivacySecurityView';
 import { CalendarView } from '@/components/views/CalendarView';
+import { TabErrorBoundary } from '@/components/TabErrorBoundary';
 
 import { Button } from '@/components/ui/Button';
-import { Sparkles, ShieldCheck, Compass, Target, GraduationCap, LogIn } from 'lucide-react';
+import { Sparkles, ShieldCheck, Compass, Target, GraduationCap, LogIn, AlertCircle, X, Radio } from 'lucide-react';
 
 function AppContent() {
-  const { user, profile, loading, signInWithGoogle } = useAuth();
+  const { user, profile, loading, signInWithGoogle, authError, clearAuthError } = useAuth();
+  const {
+    isLiveSessionActive,
+    activeAgentLabel,
+    liveVoice,
+    setActiveConversationId,
+    resumeConversation,
+    backgroundLiveStateText,
+  } = useLiveVoiceContext();
   const [currentSection, setCurrentSection] = useState<NavSection>('dashboard');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [manualOnboardingOpen, setManualOnboardingOpen] = useState(false);
@@ -33,6 +40,19 @@ function AppContent() {
   const isOnboardingOpen =
     manualOnboardingOpen ||
     Boolean(user && profile && !profile.onboardingCompleted && !onboardingDismissed);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncHash = () => {
+      const h = window.location.hash.replace('#', '');
+      if (h && ['dashboard', 'live-coach', 'goals', 'study', 'placements', 'calendar', 'reflections', 'conversations'].includes(h)) {
+        setCurrentSection(h as NavSection);
+      }
+    };
+    syncHash();
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, []);
 
   if (loading) {
     return (
@@ -59,13 +79,32 @@ function AppContent() {
             <span className="font-bold text-base tracking-tight text-slate-100">LifeForge AI</span>
           </div>
 
-          <Button size="sm" onClick={signInWithGoogle} className="gap-2 text-xs">
+          <Button size="sm" onClick={() => signInWithGoogle().catch(() => {})} className="gap-2 text-xs">
             <LogIn className="w-4 h-4" /> Sign In with Google
           </Button>
         </header>
 
         {/* Hero Section */}
         <main className="max-w-4xl mx-auto px-6 py-16 text-center space-y-8 my-auto">
+          {authError && (
+            <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-900/60 flex items-center justify-between gap-3 text-xs text-rose-300 max-w-lg mx-auto text-left animate-fade-in">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-semibold text-rose-200">Authentication Notice</div>
+                  <p className="mt-0.5 text-rose-300/90">{authError}</p>
+                </div>
+              </div>
+              <button
+                onClick={clearAuthError}
+                className="p-1 rounded-md text-rose-400 hover:text-rose-200 hover:bg-rose-900/30 transition-colors"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-950/40 border border-amber-800/50 text-amber-300 text-xs font-semibold">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>Dedicated Isolated Cloud Database</span>
@@ -81,7 +120,7 @@ function AppContent() {
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button size="lg" onClick={signInWithGoogle} className="gap-2 px-8 shadow-lg shadow-amber-950/50">
+            <Button size="lg" onClick={() => signInWithGoogle().catch(() => {})} className="gap-2 px-8 shadow-lg shadow-amber-950/50">
               <LogIn className="w-5 h-5" />
               <span>Get Started with Google</span>
             </Button>
@@ -132,15 +171,14 @@ function AppContent() {
   // Authenticated Application Shell
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top Header */}
       <HeaderBar
         onToggleMobileNav={() => setIsMobileNavOpen(!isMobileNavOpen)}
         onOpenOnboarding={() => setManualOnboardingOpen(true)}
+        isLiveActive={isLiveSessionActive}
+        onNavigateLive={() => setCurrentSection('live-coach')}
       />
 
-      {/* Main Layout Container */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Navigation Sidebar */}
         <NavigationSidebar
           currentSection={currentSection}
           onSelectSection={(sec) => setCurrentSection(sec)}
@@ -148,30 +186,69 @@ function AppContent() {
           onCloseMobile={() => setIsMobileNavOpen(false)}
         />
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-h-[calc(100vh-4rem-2.75rem)]">
-          {currentSection === 'dashboard' && (
-            <DashboardView
-              onNavigate={(sec) => setCurrentSection(sec)}
-            />
-          )}
-          {currentSection === 'live-coach' && <LiveCoachView />}
-          {currentSection === 'journal' && <JournalView />}
-          {currentSection === 'memories' && <MemoriesView />}
-          {currentSection === 'goals' && <GoalsTasksView />}
-          {currentSection === 'study' && <StudyView />}
-          {currentSection === 'placements' && <PlacementsView />}
-          {currentSection === 'calendar' && <CalendarView />}
-          {currentSection === 'reflections' && <ReflectionsView />}
-          {currentSection === 'conversations' && <ConversationsView />}
-          {currentSection === 'privacy' && <PrivacySecurityView />}
+        <main
+          className={
+            currentSection === 'live-coach'
+              ? 'flex-1 overflow-hidden h-[calc(100vh-4rem-2.75rem)] flex flex-col'
+              : 'flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-h-[calc(100vh-4rem-2.75rem)]'
+          }
+        >
+          <TabErrorBoundary tabName={currentSection}>
+            {currentSection === 'dashboard' && (
+              <DashboardView
+                onNavigate={(sec) => setCurrentSection(sec)}
+              />
+            )}
+            {currentSection === 'live-coach' && <LiveCoachView />}
+            {currentSection === 'goals' && <GoalsTasksView />}
+            {currentSection === 'study' && (
+              <DashboardView
+                onNavigate={(sec) => setCurrentSection(sec)}
+              />
+            )}
+            {currentSection === 'placements' && <PlacementsView />}
+            {currentSection === 'calendar' && <CalendarView />}
+            {currentSection === 'reflections' && <ReflectionsView />}
+            {currentSection === 'conversations' && (
+              <ConversationsView
+                onSelectConversation={async (id) => {
+                  await resumeConversation(id);
+                  setCurrentSection('live-coach');
+                }}
+              />
+            )}
+            {currentSection === 'privacy' && <PrivacySecurityView />}
+          </TabErrorBoundary>
         </main>
       </div>
 
-      {/* Observability & Agent Activity Bar */}
-      <AgentActivityBar />
+      {isLiveSessionActive && currentSection !== 'live-coach' && (
+        <button
+          onClick={() => setCurrentSection('live-coach')}
+          className="fixed bottom-14 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-900/95 border border-emerald-500/70 shadow-2xl backdrop-blur-md text-slate-100 hover:bg-slate-800 transition-all hover:scale-105"
+          title="Live Coach active in background. Click to return."
+        >
+          <div className="relative flex items-center justify-center">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping absolute" />
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 relative" />
+          </div>
+          <Radio className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span className="text-xs font-semibold tracking-wide text-emerald-300">
+            {backgroundLiveStateText || 'LIVE — CONNECTED'}
+          </span>
+        </button>
+      )}
 
-      {/* Onboarding / Profile Setup Modal */}
+      <AgentActivityBar
+        activeAgent={activeAgentLabel}
+        isLiveActive={isLiveSessionActive}
+        statusText={
+          isLiveSessionActive
+            ? `Live Voice Active · ${liveVoice.state}`
+            : 'System Ready · Isolated Firestore Active'
+        }
+      />
+
       <OnboardingModal
         isOpen={isOnboardingOpen}
         onClose={() => {
@@ -186,7 +263,9 @@ function AppContent() {
 export default function RootPage() {
   return (
     <AuthProvider>
-      <AppContent />
+      <LiveVoiceProvider>
+        <AppContent />
+      </LiveVoiceProvider>
     </AuthProvider>
   );
 }

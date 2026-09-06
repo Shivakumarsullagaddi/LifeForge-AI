@@ -1,6 +1,4 @@
 export type RetrievalRecordType =
-  | 'journal'
-  | 'memory'
   | 'goal'
   | 'task'
   | 'reflection'

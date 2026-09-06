@@ -1,10 +1,9 @@
 export type AgentDomain =
   | 'orchestrator'
-  | 'wellbeing'
   | 'study'
   | 'placement'
+  | 'wellbeing'
   | 'career'
-  | 'memory'
   | 'research'
   | 'calendar'
   | 'goal'
@@ -23,46 +22,8 @@ export interface UserProfile {
   targetPlacements?: string[];
   studyPhilosophy?: string;
   disciplinedStreakDays?: number;
+  lastActiveDate?: string;
   onboardingCompleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface JournalEntry {
-  id: string;
-  userId: string;
-  title: string;
-  content: string;
-  category?: 'reflection' | 'study' | 'placement' | 'wellbeing' | 'general';
-  tags?: string[];
-  mood?: 'focused' | 'stressed' | 'energized' | 'fatigued' | 'calm' | 'determined';
-  clarityLevel?: number; // 1 to 5
-  energyLevel?: number; // 1 to 5
-  actionTakeaway?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type MemoryType =
-  | 'preference'
-  | 'relationship'
-  | 'habit'
-  | 'value'
-  | 'milestone'
-  | 'study_preference'
-  | 'career_goal'
-  | 'routine'
-  | 'important_context';
-
-export interface MemoryItem {
-  id: string;
-  userId: string;
-  type: MemoryType;
-  content: string;
-  category?: string;
-  source: string; // e.g. "conversation", "journal", "user_explicit"
-  confidence: number; // 0 to 1
-  status: 'active' | 'candidate';
   createdAt: string;
   updatedAt: string;
 }
@@ -121,34 +82,58 @@ export interface ReflectionEntry {
   updatedAt: string;
 }
 
+export type PersistenceStatus = 'LOCAL' | 'PENDING_SYNC' | 'SYNCED' | 'SYNC_FAILED';
+
 export interface ConversationSession {
   id: string;
+  conversationId?: string;
   userId: string;
   title: string;
   agentDomain: AgentDomain;
+  activeAgent?: string;
   summary?: string;
+  rollingSummary?: string;
+  memorySummaryId?: string;
+  currentSessionId?: string;
+  activeSessionId?: string;
+  status?: 'active' | 'archived' | 'completed';
   isPinned?: boolean;
+  messageCount?: number;
+  lastMessagePreview?: string;
+  lastMessageAt?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ChatMessage {
   id: string;
+  messageId?: string;
+  conversationId?: string;
+  liveSessionId?: string;
+  turnId?: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  text?: string;
   agentDomain?: AgentDomain;
+  agent?: string;
+  model?: string;
+  source?: 'voice' | 'text' | 'tool' | 'agent';
   citations?: { title: string; url: string }[];
   toolCallSummary?: string;
+  metadata?: Record<string, any>;
+  persistenceStatus?: PersistenceStatus;
   createdAt: string;
+  timestamp?: string;
 }
 
 export interface ActionConfirmation {
   id: string;
   userId: string;
-  actionType: 'delete_journal' | 'delete_memory' | 'delete_goal' | 'delete_all_data' | 'export_data' | 'external_calendar_write';
+  actionType?: 'delete_goal' | 'delete_task' | 'delete_calendar_event' | 'delete_all_data' | 'export_data' | 'external_calendar_write';
+  type?: string;
   title: string;
   description: string;
-  payload?: string;
+  payload?: any;
   status: 'pending' | 'approved' | 'rejected' | 'expired';
   expiresAt: string;
   requestedAt: string;
@@ -196,6 +181,26 @@ export interface PlacementSkill {
   notes?: string;
 }
 
+export interface ResumeProfileData {
+  resumeId?: string;
+  fileName?: string;
+  uploadedAt?: string;
+  summary?: string;
+  skills: string[];
+  projects: Array<{ title: string; description: string; techStack: string[] }>;
+  experience: Array<{ role: string; organization: string; duration: string; highlights: string[] }>;
+  education: Array<{ degree: string; institution: string; year?: string; grade?: string }>;
+  strengths: string[];
+  gaps: string[];
+  achievements?: string[];
+  certifications?: string[];
+  technologies?: string[];
+  research?: string[];
+  publications?: string[];
+  links?: string[];
+  interviewQuestions: Array<{ question: string; category: string; expectedPoints: string[] }>;
+}
+
 export interface PlacementProfile {
   id: string;
   userId: string;
@@ -206,7 +211,8 @@ export interface PlacementProfile {
   experience: string;
   projects: PlacementProject[];
   resumeStatus: 'needs_review' | 'in_progress' | 'interview_ready';
-  preparationProgress: number; // 0-100
+  resumeProfile?: ResumeProfileData;
+  preparationProgress: number;
   upcomingInterviews: UpcomingInterview[];
   createdAt: string;
   updatedAt: string;
@@ -226,7 +232,10 @@ export interface SkillGapAnalysisResult {
 
 export interface GoogleCalendarEventItem {
   id: string;
+  eventId?: string;
+  calendarId?: string;
   summary: string;
+  title?: string;
   description?: string;
   location?: string;
   start: {
@@ -239,6 +248,9 @@ export interface GoogleCalendarEventItem {
     date?: string;
     timeZone?: string;
   };
+  startDateTime?: string;
+  endDateTime?: string;
+  timezone?: string;
   htmlLink?: string;
   status?: string;
 }

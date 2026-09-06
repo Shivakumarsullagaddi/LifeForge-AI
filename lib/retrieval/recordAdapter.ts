@@ -1,6 +1,4 @@
 import {
-  JournalEntry,
-  MemoryItem,
   GoalItem,
   TaskItem,
   ReflectionEntry,
@@ -16,8 +14,6 @@ import { RetrievalRecord } from './types';
 export function adaptUserRecords(
   userId: string,
   data: {
-    journals?: JournalEntry[];
-    memories?: MemoryItem[];
     goals?: GoalItem[];
     tasks?: TaskItem[];
     reflections?: ReflectionEntry[];
@@ -27,54 +23,7 @@ export function adaptUserRecords(
 ): RetrievalRecord[] {
   const records: RetrievalRecord[] = [];
 
-  // 1. Journals
-  if (data.journals) {
-    for (const j of data.journals) {
-      if (j.userId !== userId) continue; // Isolation guard
-      records.push({
-        id: j.id,
-        userId: j.userId,
-        type: 'journal',
-        title: j.title || 'Untitled Journal',
-        content: `${j.content || ''}${j.actionTakeaway ? ` | Takeaway: ${j.actionTakeaway}` : ''}`,
-        date: j.createdAt,
-        category: j.category,
-        tags: j.tags || [],
-        metadata: {
-          mood: j.mood,
-          clarityLevel: j.clarityLevel,
-          energyLevel: j.energyLevel,
-          actionTakeaway: j.actionTakeaway,
-        },
-      });
-    }
-  }
-
-  // 2. Memories
-  if (data.memories) {
-    for (const m of data.memories) {
-      if (m.userId !== userId) continue; // Isolation guard
-      records.push({
-        id: m.id,
-        userId: m.userId,
-        type: 'memory',
-        title: `Memory: ${m.type.replace('_', ' ')}`,
-        content: m.content,
-        date: m.createdAt,
-        category: m.category || m.type,
-        confidence: m.confidence,
-        status: m.status,
-        metadata: {
-          memoryType: m.type,
-          source: m.source,
-          status: m.status,
-          confidence: m.confidence,
-        },
-      });
-    }
-  }
-
-  // 3. Goals
+  // 1. Goals
   if (data.goals) {
     for (const g of data.goals) {
       if (g.userId !== userId) continue; // Isolation guard
@@ -170,21 +119,22 @@ export function adaptUserRecords(
     }
   }
 
-  // 7. Conversation Summaries
   if (data.conversations) {
     for (const c of data.conversations) {
       if (c.userId !== userId) continue;
-      if (c.summary) {
+      const content = c.rollingSummary || c.summary || c.lastMessagePreview;
+      if (content) {
         records.push({
           id: c.id,
           userId: c.userId,
           type: 'conversation',
           title: `Conversation: ${c.title}`,
-          content: c.summary,
-          date: c.createdAt,
-          domain: c.agentDomain,
+          content,
+          date: c.updatedAt || c.createdAt,
+          domain: c.agentDomain || c.activeAgent,
           metadata: {
-            agentDomain: c.agentDomain,
+            agentDomain: c.agentDomain || c.activeAgent,
+            messageCount: c.messageCount,
           },
         });
       }

@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Radio,
   BookMarked,
-  Brain,
   Target,
   GraduationCap,
   Briefcase,
@@ -19,14 +18,12 @@ import {
 export type NavSection =
   | 'dashboard'
   | 'live-coach'
-  | 'journal'
-  | 'memories'
+  | 'conversations'
   | 'goals'
   | 'study'
   | 'placements'
   | 'calendar'
   | 'reflections'
-  | 'conversations'
   | 'privacy';
 
 interface NavigationSidebarProps {
@@ -39,14 +36,11 @@ interface NavigationSidebarProps {
 const navItems: { id: NavSection; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'live-coach', label: 'Live Coach', icon: Radio, badge: 'Voice/AI' },
-  { id: 'journal', label: 'My Journal', icon: BookMarked },
-  { id: 'memories', label: 'Memories', icon: Brain },
+  { id: 'conversations', label: 'Conversations', icon: MessageSquare },
   { id: 'goals', label: 'Goals & Tasks', icon: Target },
-  { id: 'study', label: 'Study', icon: GraduationCap, badge: '25/5' },
   { id: 'placements', label: 'Placements', icon: Briefcase },
   { id: 'calendar', label: 'Google Calendar', icon: Calendar, badge: 'Google Sync' },
   { id: 'reflections', label: 'Reflections', icon: Sparkles },
-  { id: 'conversations', label: 'Conversations', icon: MessageSquare },
   { id: 'privacy', label: 'Privacy & Security', icon: ShieldCheck },
 ];
 
@@ -96,6 +90,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
             return (
               <button
                 key={item.id}
+                data-testid={`nav-${item.id}`}
                 onClick={() => {
                   onSelectSection(item.id);
                   onCloseMobile?.();

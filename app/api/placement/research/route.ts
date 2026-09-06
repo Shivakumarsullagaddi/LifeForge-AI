@@ -13,9 +13,19 @@ const ai = new GoogleGenAI({
   },
 });
 
+import { parseJsonBody } from '@/lib/request-parser';
+
 export async function POST(req: NextRequest) {
+  const parsed = await parseJsonBody<any>(req, {
+    allowEmpty: false,
+  });
+
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
   try {
-    const body = await req.json();
+    const body = parsed.data;
     const {
       company,
       role = 'Software Engineer',

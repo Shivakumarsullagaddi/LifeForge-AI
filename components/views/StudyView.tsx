@@ -6,6 +6,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { useAuth } from '@/lib/auth-context';
 import { getStudySessions, addStudySession } from '@/lib/firebase';
+import { useLiveVoiceContext } from '@/lib/live-voice-context';
 import type { StudySessionRecord } from '@/lib/types';
 import {
   GraduationCap,
@@ -24,86 +25,25 @@ export const StudyView: React.FC = () => {
   const [sessions, setSessions] = useState<StudySessionRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Timer State
-  const [mode, setMode] = useState<'focus' | 'break'>('focus');
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [cyclesCompleted, setCyclesCompleted] = useState(0);
+  const { timerState, startTimer, pauseTimer, resumeTimer, resetTimer } = useLiveVoiceContext();
+  const isRunning = timerState.status === 'RUNNING';
+  const mode = timerState.mode;
+  const timeLeft = timerState.remainingSeconds;
+  const cyclesCompleted = timerState.cyclesCompleted;
 
-  // Active Recall & Teach-Back Form
   const [topic, setTopic] = useState('Dynamic Programming State Formulation');
   const [teachBackNotes, setTeachBackNotes] = useState('');
   const [misconceptions, setMisconceptions] = useState('');
   const [isSavingRecord, setIsSavingRecord] = useState(false);
 
-  const loadSessions = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
+  const toggleTimer = () => {
+    if (isRunning) {
+      pauseTimer();
+    } else if (timerState.status === 'PAUSED') {
+      resumeTimer();
+    } else {
+      startTimer(25);
     }
-    try {
-      const data = await getStudySessions(user.uid);
-      setSessions(data);
-    } catch (err) {
-      console.error('Failed to load study sessions:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      if (!user) {
-        if (isMounted) setLoading(false);
-        return;
-      }
-      try {
-        const data = await getStudySessions(user.uid);
-        if (isMounted) {
-          setSessions(data);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('Failed to load study sessions:', err);
-        if (isMounted) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      isMounted = false;
-    };
-  }, [user]);
-
-  // Timer interval effect
-  useEffect(() => {
-    if (!isRunning) return;
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          if (mode === 'focus') {
-            setCyclesCompleted((c) => c + 1);
-            setMode('break');
-            return 5 * 60;
-          } else {
-            setMode('focus');
-            return 25 * 60;
-          }
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isRunning, mode]);
-
-  const toggleTimer = () => setIsRunning(!isRunning);
-
-  const resetTimer = () => {
-    setIsRunning(false);
-    setMode('focus');
-    setTimeLeft(25 * 60);
   };
 
   const formatTime = (seconds: number) => {

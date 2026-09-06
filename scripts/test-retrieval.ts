@@ -111,8 +111,6 @@ async function runRetrievalTests() {
   // 2. Test User Isolation in Adapter
   console.log('TEST 1: User Isolation & Record Adapter Verification');
   const adaptedRecords = adaptUserRecords(userId, {
-    journals: mockJournals as any,
-    memories: mockMemories as any,
     goals: mockGoals as any,
     reflections: mockReflections as any,
   });
@@ -125,14 +123,14 @@ async function runRetrievalTests() {
 
   // 3. Test Exact Retrieval
   console.log('TEST 2: Exact Search (IDs, Dates, Quoted Phrases, Exact Titles)');
-  const exactIdResults = exactSearch('journal_recursion_01', adaptedRecords);
-  console.log(`- Exact ID Search ("journal_recursion_01"): Found ${exactIdResults.length} match (Score: ${exactIdResults[0]?.score})`);
-  if (!exactIdResults.length || exactIdResults[0].id !== 'journal_recursion_01') {
+  const exactIdResults = exactSearch('goal_dsa_mastery', adaptedRecords);
+  console.log(`- Exact ID Search ("goal_dsa_mastery"): Found ${exactIdResults.length} match (Score: ${exactIdResults[0]?.score})`);
+  if (!exactIdResults.length || exactIdResults[0].id !== 'goal_dsa_mastery') {
     throw new Error('Exact ID search failed');
   }
 
-  const exactPhraseResults = exactSearch('"stack overflow"', adaptedRecords);
-  console.log(`- Exact Quoted Phrase ("stack overflow"): Found ${exactPhraseResults.length} match (Score: ${exactPhraseResults[0]?.score})`);
+  const exactPhraseResults = exactSearch('"Dynamic Programming"', adaptedRecords);
+  console.log(`- Exact Quoted Phrase ("Dynamic Programming"): Found ${exactPhraseResults.length} match (Score: ${exactPhraseResults[0]?.score})`);
   if (!exactPhraseResults.length) {
     throw new Error('Exact quoted phrase search failed');
   }

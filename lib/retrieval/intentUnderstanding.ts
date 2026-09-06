@@ -26,12 +26,6 @@ export function analyzeQueryIntent(query: string): IntentAnalysisResult {
 
   // 2. Extract record types inferred from query words
   const inferredTypes: RetrievalRecordType[] = [];
-  if (/\b(journal|entry|entries|diary|log|wrote)\b/i.test(raw)) {
-    inferredTypes.push('journal');
-  }
-  if (/\b(memory|remember|preference|habit|value|fact|routine)\b/i.test(raw)) {
-    inferredTypes.push('memory');
-  }
   if (/\b(goal|target|milestone|aim|objective)\b/i.test(raw)) {
     inferredTypes.push('goal');
   }

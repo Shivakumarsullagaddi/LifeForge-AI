@@ -14,9 +14,19 @@ const ai = new GoogleGenAI({
   },
 });
 
+import { parseJsonBody, safeJsonParse } from '@/lib/request-parser';
+
 export async function POST(req: NextRequest) {
+  const parsedReq = await parseJsonBody<any>(req, {
+    requiredFields: ['placementProfile'],
+  });
+
+  if (!parsedReq.ok) {
+    return parsedReq.response;
+  }
+
   try {
-    const body = await req.json();
+    const body = parsedReq.data;
     const {
       userId = 'current_user',
       placementProfile,
@@ -220,7 +230,7 @@ Produce a personalized skill gap analysis report with concrete sprint recommenda
       throw new Error('Empty response received from Gemini');
     }
 
-    const parsed: SkillGapAnalysisResult = JSON.parse(resultText);
+    const parsed: SkillGapAnalysisResult = safeJsonParse(resultText, {} as SkillGapAnalysisResult);
     parsed.analyzedAt = new Date().toISOString();
 
     return NextResponse.json({
