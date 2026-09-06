@@ -246,7 +246,37 @@ npm run test:unit
 
 ---
 
-## 9. Troubleshooting
+## 9. GitHub Actions CI Configuration
+
+To enable automated Playwright CI in GitHub Actions, you must supply the necessary environment secrets. The CI workflow generates a secure, temporary `.env.local` file strictly during the job execution and deletes it immediately after the tests complete.
+
+### 9.1 Adding Repository Secrets
+In your GitHub repository:
+1. Navigate to **Settings** > **Secrets and variables** > **Actions**.
+2. Under **Repository secrets**, click **New repository secret** for each required entry.
+
+### 9.2 Required GitHub Actions Secrets
+
+| Secret Name | Category | Description | Example / Placeholder |
+| :--- | :--- | :--- | :--- |
+| `GEMINI_API_KEY` | Server-Only Secret | Gemini API key for live voice and reasoning models | `your_gemini_api_key_here` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Client Config | Firebase Web API key | `your_firebase_web_api_key` |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Client Config | Firebase Auth domain | `your-project.firebaseapp.com` |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Client Config | Firebase project identifier | `your-project-id` |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Client Config | Firebase Cloud Storage bucket name | `your-project.firebasestorage.app` |
+| `NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID` | Client Config | Firestore Database ID (if custom) | `your_database_id` |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Client Config | Firebase Cloud Messaging sender ID | `your_sender_id` |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Client Config | Firebase Web Application ID | `1:123456789:web:abcdef` |
+| `NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID` | Client Config | Google Calendar OAuth Client ID | `your_oauth_client_id.apps.googleusercontent.com` |
+| `FIREBASE_CLIENT_EMAIL` | Server-Only Secret | Firebase Admin Service Account email (optional) | `firebase-adminsdk@your-project.iam.gserviceaccount.com` |
+| `FIREBASE_PRIVATE_KEY` | Server-Only Secret | Firebase Admin Service Account private key (optional) | `-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----` |
+
+> [!NOTE]
+> The temporary `.env.local` created in CI is automatically ignored by Git, never committed, and never uploaded to build artifacts.
+
+---
+
+## 10. Troubleshooting
 
 | Issue | Root Cause | Solution |
 | :--- | :--- | :--- |
@@ -256,3 +286,5 @@ npm run test:unit
 | **Google Calendar status ERROR** | Missing OAuth client ID or origin mismatch | Ensure `NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID` is set and `http://localhost:3000` is added to Authorized JavaScript origins. |
 | **Resume parsing failed** | `GEMINI_API_KEY` missing or file exceeds 10MB | Verify `GEMINI_API_KEY` in `.env.local` and upload a standard PDF or DOCX file under 10MB. |
 | **Admin verification failure** | Missing Firebase Admin credentials in dev | Run `npm run firebase:verify` to inspect local Admin SDK configuration. |
+| **CI [WebServer] node: .env.local: not found** | GitHub Actions runner missing `.env.local` | Ensure GitHub Secrets are configured as listed in Section 9. |
+

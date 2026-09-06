@@ -1,24 +1,95 @@
 name: Playwright Tests
+
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+
 jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
+
     - name: Install dependencies
       run: npm ci
+
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
+
+    - name: Generate temporary .env.local from GitHub Secrets
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        APP_URL: ${{ secrets.APP_URL || 'http://localhost:3000' }}
+        PORT: ${{ secrets.PORT || '3000' }}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+        NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID }}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+        NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID }}
+        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+      run: |
+        cat << 'EOF' > .env.local
+        NODE_ENV=development
+        APP_URL=http://localhost:3000
+        PORT=3000
+        EOF
+
+        if [ -n "$GEMINI_API_KEY" ]; then
+          echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env.local
+        fi
+        if [ -n "$NEXT_PUBLIC_FIREBASE_API_KEY" ]; then
+          echo "NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY" >> .env.local
+        fi
+        if [ -n "$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN" ]; then
+          echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN" >> .env.local
+        fi
+        if [ -n "$NEXT_PUBLIC_FIREBASE_PROJECT_ID" ]; then
+          echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID" >> .env.local
+        fi
+        if [ -n "$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET" ]; then
+          echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET" >> .env.local
+        fi
+        if [ -n "$NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID" ]; then
+          echo "NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID=$NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID" >> .env.local
+        fi
+        if [ -n "$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID" ]; then
+          echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID" >> .env.local
+        fi
+        if [ -n "$NEXT_PUBLIC_FIREBASE_APP_ID" ]; then
+          echo "NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID" >> .env.local
+        fi
+        if [ -n "$NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID" ]; then
+          echo "NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID" >> .env.local
+        fi
+        if [ -n "$FIREBASE_CLIENT_EMAIL" ]; then
+          echo "FIREBASE_CLIENT_EMAIL=$FIREBASE_CLIENT_EMAIL" >> .env.local
+        fi
+        if [ -n "$FIREBASE_PRIVATE_KEY" ]; then
+          echo "FIREBASE_PRIVATE_KEY=\"$FIREBASE_PRIVATE_KEY\"" >> .env.local
+        fi
+
+        echo "Created temporary .env.local for CI execution."
+
     - name: Run Playwright tests
       run: npx playwright test
+
+    - name: Cleanup temporary .env.local
+      if: always()
+      run: |
+        rm -f .env.local
+        echo "Cleaned up temporary .env.local"
+
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
