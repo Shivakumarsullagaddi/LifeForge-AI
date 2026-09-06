@@ -15,6 +15,3 @@ test-assets
 *.tsbuildinfo
 *.auth.json
 storage-state*.json
-README.md
-SETUP.md
-ARCHITECTURE.md

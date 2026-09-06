@@ -4,26 +4,7 @@ steps:
       - "build"
       - "-t"
       - "us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lifeforge-ai:latest"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_API_KEY=$_NEXT_PUBLIC_FIREBASE_API_KEY"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_PROJECT_ID=$_NEXT_PUBLIC_FIREBASE_PROJECT_ID"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID=$_NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_APP_ID=$_NEXT_PUBLIC_FIREBASE_APP_ID"
       - "."
-
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      - "push"
-      - "us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lifeforge-ai:latest"
 
 images:
   - "us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lifeforge-ai:latest"
